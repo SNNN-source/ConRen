@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pydantic
+motor[srv]
+python-dotenv
+certifi
+dnspython
+email-validator
