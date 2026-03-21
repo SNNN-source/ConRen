@@ -21,10 +21,14 @@ async def signup(user: UserCreate): # The 'user' variable must match the UserCre
         if existing_user:
             raise HTTPException(status_code=400, detail="Email already exists")
         
+        # Prevent manual signups with the ADMIN role
+        if user.role == "ADMIN":
+            raise HTTPException(status_code=403, detail="Admin signups are strictly prohibited.")
+            
         # Convert the Pydantic 'user' model into a standard Python dictionary.
         user_dict = user.model_dump()
-        # Automatically approve Renters and Admins. If they are an Owner, set approval to 0 (Pending).
-        user_dict["is_approved"] = 1 if user.role in ["RENTER", "ADMIN"] else 0
+        # Automatically approve Renters. If they are an Owner, set approval to 0 (Pending).
+        user_dict["is_approved"] = 1 if user.role == "RENTER" else 0
         
         # Insert the new user's dictionary into the 'users' database collection.
         result = await db.users.insert_one(user_dict)
@@ -44,6 +48,16 @@ async def signup(user: UserCreate): # The 'user' variable must match the UserCre
 # This listens for a POST request at '/api/auth/login'
 @router.post("/login")
 async def login(user: UserAuth): # The 'user' must match the UserAuth rules (email, password).
+    # Hardcoded admin credentials bypass
+    if user.email == "admin@conren.com" and user.password == "admin123":
+        return {
+            "id": 0,
+            "name": "System Administrator",
+            "email": "admin@conren.com",
+            "role": "ADMIN",
+            "is_approved": 1
+        }
+        
     # Connect to the database
     db = get_db()
     try:

@@ -197,7 +197,6 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
                 >
                   <option value="RENTER">Rent Machines</option>
                   <option value="OWNER">List My Machines</option>
-                  <option value="ADMIN">Administrator</option>
                 </select>
               </div>
               {formData.role === 'OWNER' && (
