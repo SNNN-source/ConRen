@@ -1,20 +1,55 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# ConRen - Construction Equipment Rental Marketplace
 
-# Run and deploy your AI Studio app
+🚀 **Live Demo:** [https://mini-projecttt.vercel.app](https://mini-projecttt.vercel.app)
 
-This contains everything you need to run your app locally.
+ConRen is a production-ready marketplace designed to bridge the gap between Construction Equipment Owners and Site Engineers. 
 
-View your app in AI Studio: https://ai.studio/apps/f520fc7f-5d06-4c6d-a337-13a2d4e9da48
+## Key Features
 
-## Run Locally
+* **Role-Based Access Control:** Dedicated dashboards for Renters, Machine Owners, and Administrators.
+* **Streamlined Rentals:** Renters (Site Engineers) can easily browse, search, and rent construction equipment.
+* **Fleet Management:** Machine Owners can list their equipment, manage availability, and track rentals.
+* **Admin Approval Workflow:** New Machine Owners require Administrator approval before machines can be publicly listed to ensure quality and trust on the platform.
+* **Authentication:** Secure user registration and login built in.
 
-**Prerequisites:**  Node.js
+## Tech Stack
 
+* **Frontend:** React, TypeScript, Tailwind CSS, Vite
+* **Backend:** Python, FastAPI
+* **Database:** MongoDB
+* **Deployment:** Vercel
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Running Locally
+
+To run the project locally, you will need to start both the backend and frontend servers.
+
+### 1. Backend Setup
+Make sure you have Python installed.
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Set up your `.env` file in the `backend` directory with your MongoDB connection string (see `.env.example`).
+
+Run the backend server:
+```bash
+fastapi dev main.py
+```
+
+### 2. Frontend Setup
+Make sure you have Node.js installed.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend will be available at `http://localhost:5173` (or the port specified by Vite), and the backend API runs at `http://localhost:8000`.
+
+## Contributing
+Feel free to open issues and pull requests to improve the project.
