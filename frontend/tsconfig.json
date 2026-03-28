@@ -1,19 +1,28 @@
 {
+  // TypeScript configuration for the frontend.
+  // Beginner note:
+  // This file tells TypeScript what language features to allow and how React
+  // `.tsx` files should be understood.
   "compilerOptions": {
+    // Target modern JavaScript output/features.
     "target": "ES2022",
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
+    // Use ES modules, which Vite expects.
     "module": "ESNext",
     "lib": [
       "ES2022",
       "DOM",
       "DOM.Iterable"
     ],
+    // Skip type-checking inside third-party declaration files.
     "skipLibCheck": true,
+    // Let the bundler control module resolution behavior.
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
     "allowJs": true,
+    // Tell TypeScript how JSX should be transformed for React.
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
@@ -21,6 +30,7 @@
       ]
     },
     "allowImportingTsExtensions": true,
+    // Do not emit compiled files; use TypeScript only for type checking.
     "noEmit": true
   }
 }

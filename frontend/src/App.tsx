@@ -1,4 +1,13 @@
 /**
+ * Main React application for ConRen.
+ *
+ * Beginner note:
+ * This file currently contains most of the frontend application in one place.
+ * That includes data types, reusable components, dashboards, booking flows,
+ * payment UI, and top-level screen switching.
+ *
+ * In a larger app, this would usually be split into many smaller files.
+ *
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -25,8 +34,9 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 // --- Types ---
+// These interfaces describe the shape of data the frontend expects from the API.
 interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: 'OWNER' | 'RENTER' | 'ADMIN';
@@ -36,8 +46,8 @@ interface User {
 }
 
 interface Machine {
-  id: number;
-  owner_id: number;
+  id: string;
+  owner_id: string;
   name: string;
   category: string;
   location: string;
@@ -47,9 +57,9 @@ interface Machine {
 }
 
 interface Booking {
-  id: number;
-  machine_id: number;
-  renter_id: number;
+  id: string;
+  machine_id: string;
+  renter_id: string;
   start_date: string;
   end_date: string;
   actual_end_date?: string;
@@ -63,15 +73,44 @@ interface Booking {
 }
 
 interface Notification {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   message: string;
   is_read: number;
   created_at: string;
 }
 
-// --- Components ---
+interface AuthSession {
+  token: string;
+  user: User;
+}
 
+const AUTH_TOKEN_KEY = 'auth_token';
+const AUTH_USER_KEY = 'auth_user';
+
+const getStoredToken = () => localStorage.getItem(AUTH_TOKEN_KEY);
+
+const clearStoredSession = () => {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+};
+
+const apiFetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
+  const headers = new Headers(init.headers ?? {});
+  const token = getStoredToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  return fetch(input, { ...init, headers });
+};
+
+const getInitialPaymentAmount = (totalCost: number) => Math.ceil(totalCost / 2);
+const getFinalPaymentAmount = (totalCost: number, extraCost: number) =>
+  totalCost - getInitialPaymentAmount(totalCost) + extraCost;
+
+// --- Components ---
+// The app UI is built from React components. Each component below is a piece
+// of the overall interface.
+
+// Top navigation bar shown across the app.
 const Navbar: React.FC<{ user: User | null, onLogout: () => void, onNavigate: (view: string) => void }> = ({ user, onLogout, onNavigate }) => (
   <nav className="bg-white border-b border-zinc-200 sticky top-0 z-50">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -113,7 +152,8 @@ const Navbar: React.FC<{ user: User | null, onLogout: () => void, onNavigate: (v
   </nav>
 );
 
-const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
+// Login and signup screen.
+const AuthPage: React.FC<{ onLogin: (session: AuthSession) => void }> = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({ 
     name: '', 
@@ -125,6 +165,7 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
   });
   const [error, setError] = useState('');
 
+  // Submit either a login request or a signup request depending on the mode.
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -243,6 +284,7 @@ const AuthPage: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
   );
 };
 
+// Reusable machine card used in lists and dashboards.
 const MachineCard: React.FC<{ machine: Machine, onBook?: (m: Machine) => void }> = ({ machine, onBook }) => (
   <motion.div 
     layout
@@ -285,11 +327,12 @@ const MachineCard: React.FC<{ machine: Machine, onBook?: (m: Machine) => void }>
   </motion.div>
 );
 
-const NotificationList: React.FC<{ userId: number }> = ({ userId }) => {
+// Notification panel that periodically checks the backend for updates.
+const NotificationList: React.FC<{ userId: string }> = ({ userId }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const fetchNotifications = async () => {
-    const res = await fetch(`/api/notifications/${userId}`);
+    const res = await apiFetch(`/api/notifications/${userId}`);
     setNotifications(await res.json());
   };
 
@@ -321,6 +364,7 @@ const NotificationList: React.FC<{ userId: number }> = ({ userId }) => {
   );
 };
 
+// Dashboard shown to approved machine owners.
 const OwnerDashboard: React.FC<{ user: User }> = ({ user }) => {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -329,10 +373,11 @@ const OwnerDashboard: React.FC<{ user: User }> = ({ user }) => {
     name: '', category: 'Excavator', location: '', price_per_hour: 0, image_url: '', description: ''
   });
 
+  // Load the owner's machines and related bookings.
   const fetchData = async () => {
     const [mRes, bRes] = await Promise.all([
-      fetch(`/api/machines/owner/${user.id}`),
-      fetch(`/api/bookings/owner/${user.id}`)
+      apiFetch(`/api/machines/owner/${user.id}`),
+      apiFetch(`/api/bookings/owner/${user.id}`)
     ]);
     setMachines(await mRes.json());
     setBookings(await bRes.json());
@@ -340,9 +385,10 @@ const OwnerDashboard: React.FC<{ user: User }> = ({ user }) => {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Create a new machine listing and refresh the dashboard.
   const handleAddMachine = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch('/api/machines', {
+    await apiFetch('/api/machines', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...newMachine, owner_id: user.id })
@@ -351,8 +397,9 @@ const OwnerDashboard: React.FC<{ user: User }> = ({ user }) => {
     fetchData();
   };
 
-  const updateBookingStatus = async (id: number, status: string) => {
-    await fetch(`/api/bookings/${id}`, {
+  // Update the booking status after owner actions.
+  const updateBookingStatus = async (id: string, status: string) => {
+    await apiFetch(`/api/bookings/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status })
@@ -564,7 +611,7 @@ const RenterDashboard: React.FC<{ user: User, onNavigate: (view: string) => void
     const query = new URLSearchParams(search).toString();
     const [mRes, bRes] = await Promise.all([
       fetch(`/api/machines?${query}`),
-      fetch(`/api/bookings/renter/${user.id}`)
+      apiFetch(`/api/bookings/renter/${user.id}`)
     ]);
     setMachines(await mRes.json());
     setBookings(await bRes.json());
@@ -576,42 +623,57 @@ const RenterDashboard: React.FC<{ user: User, onNavigate: (view: string) => void
     if (!selectedMachine) return;
     const start = new Date(bookingDates.start);
     const end = new Date(bookingDates.end);
-    const hours = Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
-    const total_cost = Math.ceil(hours * selectedMachine.price_per_hour);
+    if (!bookingDates.start || !bookingDates.end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+      setCancelMessage({ text: 'Please choose a valid booking range.', type: 'error' });
+      setTimeout(() => setCancelMessage(null), 5000);
+      return;
+    }
 
-    await fetch('/api/bookings', {
+    const res = await apiFetch('/api/bookings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         machine_id: selectedMachine.id,
         renter_id: user.id,
         start_date: bookingDates.start,
-        end_date: bookingDates.end,
-        total_cost
+        end_date: bookingDates.end
       })
     });
+    if (!res.ok) {
+      const data = await res.json();
+      setCancelMessage({ text: data.detail || 'Booking failed.', type: 'error' });
+      setTimeout(() => setCancelMessage(null), 5000);
+      return;
+    }
     setSelectedMachine(null);
+    setBookingDates({ start: '', end: '' });
     fetchData();
     setActiveTab('dashboard');
   };
 
   const handlePayment = async (booking: Booking, type: 'INITIAL' | 'FINAL') => {
-    const amount = type === 'INITIAL' ? booking.total_cost / 2 : (booking.total_cost / 2 + booking.extra_cost);
-    const res = await fetch(`/api/bookings/${booking.id}/pay`, {
+    const amount = type === 'INITIAL'
+      ? getInitialPaymentAmount(booking.total_cost)
+      : getFinalPaymentAmount(booking.total_cost, booking.extra_cost);
+    const res = await apiFetch(`/api/bookings/${booking.id}/pay`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, amount })
     });
     if (res.ok) {
-      setPaymentSuccess(`Payment of ₹${amount} successful! Confirmation sent to owner.`);
+      setPaymentSuccess(`Payment of Rs ${amount} successful. Confirmation sent to owner.`);
       setTimeout(() => setPaymentSuccess(null), 5000);
       fetchData();
+    } else {
+      const data = await res.json();
+      setCancelMessage({ text: data.detail || 'Payment failed.', type: 'error' });
+      setTimeout(() => setCancelMessage(null), 5000);
     }
   };
 
-  const completeBooking = async (id: number) => {
+  const completeBooking = async (id: string) => {
     const actual_end_date = new Date().toISOString().slice(0, 16);
-    await fetch(`/api/bookings/${id}`, {
+    await apiFetch(`/api/bookings/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'COMPLETED', actual_end_date })
@@ -631,7 +693,7 @@ const RenterDashboard: React.FC<{ user: User, onNavigate: (view: string) => void
       setTimeout(() => setCancelMessage(null), 6000);
       return;
     }
-    const res = await fetch(`/api/bookings/${b.id}/cancel`, { method: 'POST' });
+    const res = await apiFetch(`/api/bookings/${b.id}/cancel`, { method: 'POST' });
     const data = await res.json();
     if (res.ok) {
       setCancelMessage({ text: 'Booking cancelled successfully.', type: 'success' });
@@ -798,7 +860,7 @@ const RenterDashboard: React.FC<{ user: User, onNavigate: (view: string) => void
                         onClick={() => handlePayment(b, 'INITIAL')}
                         className="w-full bg-emerald-600 text-white py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
                       >
-                        Pay Initial 50% (₹{b.total_cost / 2})
+                        Pay Initial 50% (₹{getInitialPaymentAmount(b.total_cost)})
                       </button>
                     )}
 
@@ -816,7 +878,7 @@ const RenterDashboard: React.FC<{ user: User, onNavigate: (view: string) => void
                         onClick={() => handlePayment(b, 'FINAL')}
                         className="w-full bg-emerald-600 text-white py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
                       >
-                        Pay Final Balance (₹{b.total_cost / 2 + b.extra_cost})
+                        Pay Final Balance (₹{getFinalPaymentAmount(b.total_cost, b.extra_cost)})
                       </button>
                     )}
 
@@ -901,7 +963,7 @@ const RenterDashboard: React.FC<{ user: User, onNavigate: (view: string) => void
                             )}
                           </div>
                         )}
-                        <span className="text-sm text-zinc-600 font-medium">₹{b.total_cost / 2}</span>
+                        <span className="text-sm text-zinc-600 font-medium">₹{getInitialPaymentAmount(b.total_cost)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -921,7 +983,7 @@ const RenterDashboard: React.FC<{ user: User, onNavigate: (view: string) => void
                             )}
                           </div>
                         )}
-                        <span className="text-sm text-zinc-600 font-medium">₹{b.total_cost / 2 + b.extra_cost}</span>
+                        <span className="text-sm text-zinc-600 font-medium">₹{getFinalPaymentAmount(b.total_cost, b.extra_cost)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -1021,18 +1083,19 @@ const RenterDashboard: React.FC<{ user: User, onNavigate: (view: string) => void
   );
 };
 
+// Dashboard shown to the admin user.
 const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
   const [pendingOwners, setPendingOwners] = useState<User[]>([]);
 
   const fetchPending = async () => {
-    const res = await fetch('/api/admin/pending-owners');
+    const res = await apiFetch('/api/admin/pending-owners');
     setPendingOwners(await res.json());
   };
 
   useEffect(() => { fetchPending(); }, []);
 
-  const approveOwner = async (id: number) => {
-    await fetch(`/api/admin/approve-owner/${id}`, { method: 'PATCH' });
+  const approveOwner = async (id: string) => {
+    await apiFetch(`/api/admin/approve-owner/${id}`, { method: 'PATCH' });
     fetchPending();
   };
 
@@ -1093,6 +1156,7 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
   );
 };
 
+// Waiting screen shown to owners before an admin approves them.
 const PendingApproval: React.FC = () => (
   <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-zinc-50 p-4">
     <div className="bg-white p-12 rounded-3xl shadow-xl border border-zinc-200 max-w-lg text-center">
@@ -1111,6 +1175,7 @@ const PendingApproval: React.FC = () => (
   </div>
 );
 
+// Public landing page.
 const HomePage: React.FC<{ onNavigate: (view: string) => void }> = ({ onNavigate }) => (
   <div className="relative overflow-hidden">
     <div className="max-w-7xl mx-auto px-4 pt-20 pb-32">
@@ -1172,30 +1237,41 @@ const HomePage: React.FC<{ onNavigate: (view: string) => void }> = ({ onNavigate
 );
 
 export default function App() {
+  // Top-level app state:
+  // `user` stores the current logged-in user.
+  // `view` decides which major screen should be displayed.
   const [user, setUser] = useState<User | null>(null);
   const [view, setView] = useState('home');
 
   useEffect(() => {
-    const saved = localStorage.getItem('user');
-    if (saved) {
-      setUser(JSON.parse(saved));
+    // Restore the last logged-in user from browser storage on page refresh.
+    const savedUser = localStorage.getItem(AUTH_USER_KEY);
+    const savedToken = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (savedUser && savedToken) {
+      setUser(JSON.parse(savedUser));
       setView('dashboard');
+    } else {
+      clearStoredSession();
     }
   }, []);
 
-  const handleLogin = (u: User) => {
-    setUser(u);
-    localStorage.setItem('user', JSON.stringify(u));
+  const handleLogin = (session: AuthSession) => {
+    // Save the user both in React state and in browser storage.
+    setUser(session.user);
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(session.user));
+    localStorage.setItem(AUTH_TOKEN_KEY, session.token);
     setView('dashboard');
   };
 
   const handleLogout = () => {
+    // Clear the local session when the user logs out.
     setUser(null);
-    localStorage.removeItem('user');
+    clearStoredSession();
     setView('home');
   };
 
   const renderView = () => {
+    // This behaves like a very small client-side router.
     if (view === 'auth') return <AuthPage onLogin={handleLogin} />;
     if (view === 'home') {
       if (user?.role === 'RENTER') return <RenterDashboard user={user} onNavigate={setView} />;

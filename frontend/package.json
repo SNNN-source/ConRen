@@ -1,5 +1,6 @@
 {
-  "name": "react-example",
+  "name": "conren-frontend",
+  "description": "Frontend for the ConRen construction equipment rental marketplace.",
   "private": true,
   "version": "0.0.0",
   "type": "module",

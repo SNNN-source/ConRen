@@ -1,12 +1,22 @@
+/*
+  Global frontend styles for ConRen.
+
+  Beginner note:
+  This file loads the font, imports Tailwind CSS, and defines a few global
+  defaults such as the base font family and body background.
+*/
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
+  /* Default sans-serif font used across the app. */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
   body {
+    /* Basic global body styling. */
     @apply antialiased text-zinc-900 bg-zinc-50;
   }
 }

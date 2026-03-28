@@ -1,5 +1,5 @@
 {
   "name": "Conren: Heavy Equipment Marketplace",
-  "description": "A comprehensive platform for renting and listing heavy machinery like excavators and JCBs, featuring owner dashboards, search filters, and booking management.",
+  "description": "A beginner-friendly full-stack marketplace for renting and listing heavy machinery, with renter, owner, and admin flows.",
   "requestFramePermissions": []
 }
